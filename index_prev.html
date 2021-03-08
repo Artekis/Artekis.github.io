@@ -1,0 +1,205 @@
+ <!DOCTYPE html>
+<html>
+<head>
+    <link href="https://unpkg.com/filepond/dist/filepond.css" rel="stylesheet">
+     <link href="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.min.css" rel="stylesheet"/>
+    <style>
+     .filepond--item {
+    width: calc(25% - .5em);}
+}
+.filepond--panel-root {
+    background-color: #316e92;
+}
+.filepond--panel-root {
+    border-radius: 1em;
+}
+.filepond--root,
+.filepond--root .filepond--drop-label {
+  width: 600px;
+}
+</style>
+
+</head>
+<body>
+
+<div id="openseadragon1" style="width: 600px; height: 400px;"></div>
+
+
+<script src="openseadragon/openseadragon.min.js"></script>
+
+<!--script type="text/javascript">
+    let request = new XMLHttpRequest();
+    request.open('GET', "https://cyt2.fgmm.cl/_random_tile");
+    request.responseType = 'json';
+    request.send();
+    request.onload = function() {
+        first_image = request.response['dir'];
+        console.log(first_image);
+        viewer.open("https://storage.googleapis.com/mustakis/tiles/"+first_image+"/"+first_image+".dzi")
+        let sec = new XMLHttpRequest();
+        sec.open('GET', "https://storage.googleapis.com/mustakis/tablas/"+first_image+".jpg.json");
+        sec.responseType = 'json';
+        sec.send();
+        sec.onload = function() {
+        coord_to_index = sec.response;
+        console.log(coord_to_index);
+    };    
+    };    
+</script-->
+<script type="text/javascript">
+    var first_image = "2020-07-14_04-57-40_UTC";
+    var coord_to_index = 0;
+    var  pathitos;
+    let tir = new XMLHttpRequest();
+    tir.open('GET',"https://storage.googleapis.com/mustakis/tablas/paths.json");
+    tir.responseType = 'json';
+    tir.send();
+    tir.onload = function() {
+        pathitos = tir.response;
+        console.log(pathitos);
+    }
+    let sec = new XMLHttpRequest();
+    sec.open('GET', "https://storage.googleapis.com/mustakis/tablas/"+first_image+".jpg.json");
+    sec.responseType = 'json';
+    sec.send();
+    sec.onload = function() {
+        coord_to_index = sec.response;
+        console.log(coord_to_index);
+    };    
+
+    var viewer = OpenSeadragon({
+        id: "openseadragon1",
+        prefixUrl: "openseadragon/images/",
+        tileSources: "https://storage.googleapis.com/mustakis/tiles/"+first_image+"/"+first_image+".dzi",
+        maxZoomPixelRatio : 6.0   
+ });
+</script>
+<script type="text/javascript">
+viewer.addHandler('canvas-double-click', function(event) {
+    // The canvas-click event gives us a position in web coordinates.
+    var webPoint = event.position;
+    if (viewer.viewport.getMaxZoom()-viewer.viewport.getZoom(1)>8){
+       return;
+}
+    // Convert that to viewport coordinates, the lingua franca of OpenSeadragon coordinates.
+    var viewportPoint = viewer.viewport.pointFromPixel(webPoint);
+
+    // Convert from viewport coordinates to image coordinates.
+    var imagePoint = viewer.viewport.viewportToImageCoordinates(viewportPoint);
+    var x = imagePoint.x - (imagePoint.x % 20) ;
+    var y = imagePoint.y - (imagePoint.y % 20) ;
+    var llave = "(".concat(x.toString(),", ",y.toString(),", ",(x+20).toString(),", ",(y+20).toString(),")");
+    // Show the results.
+    console.log()
+    var indexito = coord_to_index[llave];
+    var path_img = pathitos[indexito];
+    path_img = path_img.split("/");
+    path_img = path_img.pop();
+    path_img = path_img.split(".");
+    path_img = path_img[0];
+    //console.log(path_img,indexito,x.toString(),y.toString(),imagePoint.x.toString(),llave);
+    viewer.open("https://storage.googleapis.com/mustakis/tiles/"+path_img+"/"+path_img+".dzi") ; 
+
+
+    let request = new XMLHttpRequest();
+    request.open('GET', "https://storage.googleapis.com/mustakis/tablas/"+path_img+".jpg.json");
+    request.responseType = 'json';
+    request.send();
+    request.onload = function() {
+        coord_to_index = request.response;
+    };    
+});
+</script>
+
+
+
+<!--input type="file" class="my-pond" name="filepond" data-max-file-size="1MB"/ style="width:600px;"-->
+
+<!-- include jQuery library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.js"></script>
+
+<!-- include FilePond library -->
+<script src="https://unpkg.com/filepond/dist/filepond.min.js"></script>
+
+<!-- include FilePond plugins -->
+<script src="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.min.js"></script>
+<script src="https://unpkg.com/filepond-plugin-image-validate-size/dist/filepond-plugin-image-validate-size.js"></script>
+<script src="https://unpkg.com/filepond-plugin-file-validate-size/dist/filepond-plugin-file-validate-size.js"></script>
+<!-- include FilePond jQuery adapter -->
+<script src="https://unpkg.com/jquery-filepond/filepond.jquery.js"></script>
+
+
+<script>
+  $(function(){
+  
+    // First register any plugins
+    $.fn.filepond.registerPlugin(FilePondPluginImagePreview);
+    $.fn.filepond.registerPlugin(FilePondPluginImageValidateSize);
+    $.fn.filepond.registerPlugin(FilePondPluginFileValidateSize);
+    $.fn.filepond.setDefaults({
+        maxFileSize: '2MB',
+        imageValidateSizeMaxWidth: 3000,
+        imageValidateSizeMaxHeight:3000
+    });
+
+    // Turn input element into a pond
+    $('.my-pond').filepond({
+        server: {
+            process: function(fieldName, file, metadata, load, error, progress, abort, transfer, options) {
+                var form_data = new FormData();
+
+                form_data.append("files[]",file)
+                
+                $.ajax({
+                    url: 'https://cyt2.fgmm.cl/_upload', // point to server-side URL
+                    dataType: 'json', // what to expect back from server
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    data: form_data,
+                    type: 'post',
+                    success: function (response) { // display success response
+                        $('#msg').html('');
+                        $.each(response, function (key, data) {                         
+                            if(key !== 'message') {
+                                $('#msg').append(key + ' -> ' + data + '<br/>');
+
+                            }
+                            if(key == 'tile'){
+                                viewer.open("https://cyt.fgmm.cl/web-mosaic/tmp-tiles/"+data+"/"+data+".dzi");
+                                let request = new XMLHttpRequest();
+                                request.open('GET', "https://cyt.fgmm.cl/web-mosaic/tablas/"+data+".jpg.json");
+                                request.responseType = 'json';
+                                request.send();
+                                request.onload = function() {
+                                    coord_to_index = request.response;
+                                }; 
+                                load("ok");
+
+                            }
+                             else {
+                                $('#msg').append(data + '<br/>');
+
+                            }
+                        })
+
+                    },
+                    error: function (response) {
+                        $('#msg').html(response.message); // display error response
+                        error(response.message);
+                    }
+                });
+            }
+        },
+        labelIdle: 'Puedes probar la obra <span class="filepond--label-action"> Click aqui para subir una imagen </span>',
+        dropValidation: true,
+        allowImageValidateSize: true,
+        maxFileSize: '2MB'
+        });
+
+    });
+</script>
+
+
+</body>
+</html> 
